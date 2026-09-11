@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="g-priya" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="url(#g-priya)"/>
+  <!-- Hair bun -->
+  <circle cx="50" cy="24" r="10" fill="#172554"/>
+  <path d="M28 42 C28 26 72 26 72 42 C72 56 68 62 68 62 C68 40 64 34 50 34 C36 34 32 40 32 62 C32 62 28 56 28 42 Z" fill="#172554"/>
+  <circle cx="50" cy="45" r="16" fill="#fed7aa"/>
+  <!-- Bindi & Eyes -->
+  <circle cx="50" cy="38" r="1.5" fill="#dc2626"/>
+  <circle cx="44" cy="44" r="1.8" fill="#0f172a"/>
+  <circle cx="56" cy="44" r="1.8" fill="#0f172a"/>
+  <path d="M46 52 Q50 55 54 52" stroke="#b91c1c" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  <!-- Business attire -->
+  <path d="M22 88 C22 68 36 64 50 64 C64 64 78 68 78 88 Z" fill="#065f46"/>
+  <circle cx="50" cy="67" r="5" fill="#fed7aa"/>
+</svg>

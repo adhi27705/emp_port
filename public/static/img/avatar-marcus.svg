@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="g-marcus" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="url(#g-marcus)"/>
+  <!-- Head & Short hair -->
+  <path d="M33 40 C33 28 67 28 67 40 C67 32 60 27 50 27 C40 27 33 32 33 40 Z" fill="#292524"/>
+  <circle cx="50" cy="45" r="16" fill="#fcd34d"/>
+  <!-- Beard & Features -->
+  <circle cx="44" cy="43" r="1.8" fill="#1c1917"/>
+  <circle cx="56" cy="43" r="1.8" fill="#1c1917"/>
+  <path d="M40 50 C40 58 60 58 60 50 C58 54 52 56 50 56 C48 56 42 54 40 50 Z" fill="#44403c"/>
+  <path d="M46 51 Q50 53 54 51" stroke="#fff" stroke-width="1" fill="none"/>
+  <!-- Polo Shirt -->
+  <path d="M22 88 C22 68 36 64 50 64 C64 64 78 68 78 88 Z" fill="#0f766e"/>
+  <path d="M45 64 L50 72 L55 64 Z" fill="#fcd34d"/>
+</svg>

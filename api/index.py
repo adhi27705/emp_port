@@ -7,8 +7,23 @@ from werkzeug.utils import secure_filename
 # Determine root directories for templates and static assets
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(CURRENT_DIR)
-TEMPLATE_DIR = os.path.join(ROOT_DIR, 'app', 'templates')
-STATIC_DIR = os.path.join(ROOT_DIR, 'app', 'static')
+
+# Support multiple environments (local and Vercel serverless bundle)
+template_candidates = [
+    os.path.join(CURRENT_DIR, 'templates'),
+    os.path.join(ROOT_DIR, 'app', 'templates'),
+    os.path.join(ROOT_DIR, 'templates'),
+    CURRENT_DIR
+]
+TEMPLATE_DIR = next((p for p in template_candidates if os.path.exists(p)), CURRENT_DIR)
+
+static_candidates = [
+    os.path.join(CURRENT_DIR, 'static'),
+    os.path.join(ROOT_DIR, 'app', 'static'),
+    os.path.join(ROOT_DIR, 'static'),
+    CURRENT_DIR
+]
+STATIC_DIR = next((p for p in static_candidates if os.path.exists(p)), CURRENT_DIR)
 
 # Create Flask application at top-level
 app = Flask(
@@ -74,22 +89,44 @@ def allowed_file(filename):
 
 
 @app.route('/health')
+@app.route('/api/health')
+@app.route('/api/index/health')
 def health():
     return jsonify({"status": "healthy", "service": "employee-directory-portal"}), 200
 
 
 @app.route('/static/uploads/<path:filename>')
+@app.route('/uploads/<path:filename>')
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 @app.route('/')
+@app.route('/api')
+@app.route('/api/index')
+@app.route('/api/index.py')
 def index():
     init_db()
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception:
+        # Robust fallback: directly read index.html if Jinja loader encounters packaging issues in Lambda
+        for p in [
+            os.path.join(TEMPLATE_DIR, 'index.html'),
+            os.path.join(CURRENT_DIR, 'templates', 'index.html'),
+            os.path.join(CURRENT_DIR, 'index.html'),
+            os.path.join(ROOT_DIR, 'public', 'index.html'),
+            os.path.join(ROOT_DIR, 'app', 'templates', 'index.html')
+        ]:
+            if os.path.exists(p):
+                with open(p, 'r', encoding='utf-8') as f:
+                    return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
+        raise
 
 
 @app.route('/search', methods=['GET'])
+@app.route('/api/search', methods=['GET'])
+@app.route('/api/index/search', methods=['GET'])
 def search():
     init_db()
     query = request.args.get('q', '').strip()
@@ -122,6 +159,8 @@ def search():
 
 
 @app.route('/register', methods=['POST'])
+@app.route('/api/register', methods=['POST'])
+@app.route('/api/index/register', methods=['POST'])
 def register():
     init_db()
     name = request.form.get('name', '').strip()
@@ -170,6 +209,14 @@ def register():
         if "UNIQUE" in str(e).upper():
             return jsonify({"error": "An employee with this email already exists."}), 409
         return jsonify({"error": f"Failed to save employee: {str(e)}"}), 500
+
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    # Graceful fallback for single-page routing or rewritten paths
+    if request.path.startswith(('/search', '/api/search', '/api/index/search')):
+        return search()
+    return index()
 
 
 # Top-level handler aliases expected by Vercel serverless runtime
