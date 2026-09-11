@@ -65,24 +65,29 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchEmployees(searchInput.value.trim(), activeDepartment);
   }
 
-  // 3. Fetch Employees (AJAX /search route)
+  // 3. Fetch Employees (AJAX /api/search route)
   async function fetchEmployees(query = '', dept = 'All') {
     try {
       const params = new URLSearchParams();
       if (query) params.append('q', query);
       if (dept && dept !== 'All') params.append('dept', dept);
 
-      const url = `/search?${params.toString()}`;
-      let res = await fetch(url);
-      let text = await res.text();
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      let res = await fetch(`/api/search${queryString}`);
+      
+      if (!res.ok) {
+        // Fallback to /search if needed
+        res = await fetch(`/search${queryString}`);
+      }
+
+      const text = await res.text();
       let employees;
 
       try {
         employees = JSON.parse(text);
       } catch (parseErr) {
-        // If serverless rewrite returned index HTML, fallback to explicit API route
-        const fallbackRes = await fetch(`/api/search?${params.toString()}`);
-        employees = await fallbackRes.json();
+        console.warn('Response was not JSON:', text.slice(0, 80));
+        employees = [];
       }
 
       renderEmployeeCards(employees);
@@ -171,21 +176,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData(addEmployeeForm);
 
     try {
-      let res = await fetch('/register', {
+      let res = await fetch('/api/register', {
         method: 'POST',
         body: formData
       });
+      if (!res.ok) {
+        res = await fetch('/register', {
+          method: 'POST',
+          body: formData
+        });
+      }
       let text = await res.text();
       let data;
 
       try {
         data = JSON.parse(text);
       } catch (parseErr) {
-        res = await fetch('/api/register', {
-          method: 'POST',
-          body: formData
-        });
-        data = await res.json();
+        throw new Error('Server returned invalid response');
       }
 
       if (!res.ok) {
