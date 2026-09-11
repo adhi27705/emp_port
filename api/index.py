@@ -197,6 +197,14 @@ def index():
 @app.route('/api/index.py', methods=['GET', 'POST'])
 def vercel_entrypoint():
     init_db()
+    endpoint = request.args.get('__endpoint', '').lower()
+    if endpoint == 'search':
+        return search()
+    if endpoint == 'register':
+        return register()
+    if endpoint == 'health':
+        return health()
+
     matched = (request.headers.get('x-matched-path') or 
                request.headers.get('x-now-route-matches') or
                request.environ.get('HTTP_X_MATCHED_PATH') or
@@ -210,7 +218,6 @@ def vercel_entrypoint():
     if clean_path.startswith('/health') or clean_path.startswith('/api/health'):
         return health()
     
-    # Check parameters or methods if headers are not present
     if request.method == 'POST' or request.files:
         return register()
     if 'q' in request.args or 'dept' in request.args:

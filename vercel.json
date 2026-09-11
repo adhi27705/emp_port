@@ -1,25 +1,33 @@
 {
   "functions": {
     "api/index.py": {
-      "includeFiles": "{app/**,public/**,api/**}"
+      "includeFiles": "{app/**,api/**}"
     }
   },
   "rewrites": [
     {
       "source": "/search",
-      "destination": "/api/index.py"
+      "destination": "/api/index.py?__endpoint=search"
+    },
+    {
+      "source": "/api/search",
+      "destination": "/api/index.py?__endpoint=search"
     },
     {
       "source": "/register",
-      "destination": "/api/index.py"
+      "destination": "/api/index.py?__endpoint=register"
+    },
+    {
+      "source": "/api/register",
+      "destination": "/api/index.py?__endpoint=register"
     },
     {
       "source": "/health",
-      "destination": "/api/index.py"
+      "destination": "/api/index.py?__endpoint=health"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "source": "/api/health",
+      "destination": "/api/index.py?__endpoint=health"
     },
     {
       "source": "/(.*)",
