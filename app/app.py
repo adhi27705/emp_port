@@ -34,6 +34,7 @@ SQLITE_DB_PATH = os.path.join(BASE_DIR, 'employees.db')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB upload limit
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
