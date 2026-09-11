@@ -13,7 +13,11 @@ if app_dir not in sys.path:
     sys.path.insert(0, app_dir)
 
 # Import Flask application instance
-from app.app import app
+try:
+    from app.app import app
+except (ImportError, ModuleNotFoundError):
+    from app import app
 
 # Export app for Vercel serverless handler
 app.debug = False
+
