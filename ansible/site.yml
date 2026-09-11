@@ -1,0 +1,14 @@
+---
+- name: Deploy Employee Directory Portal Stack
+  hosts: webservers
+  become: true
+  gather_facts: true
+
+  vars:
+    app_dir: "{{ project_root | default('/opt/employee-directory') }}"
+    docker_compose_version: "2.24.5"
+
+  roles:
+    - docker_setup
+    - app_deploy
+    - nginx_config

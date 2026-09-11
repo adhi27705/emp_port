@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: employee_db
+    environment:
+      POSTGRES_DB: employee_directory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d employee_directory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - employee_net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: employee_app
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/employee_directory
+      UPLOAD_FOLDER: /uploads
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - uploads_volume:/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - employee_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: employee_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - uploads_volume:/var/www/uploads:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - employee_net
+
+volumes:
+  pgdata:
+    name: employee_pgdata
+  uploads_volume:
+    name: employee_uploads
+
+networks:
+  employee_net:
+    driver: bridge

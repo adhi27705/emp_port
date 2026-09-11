@@ -1,0 +1,22 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment files
+.env
+*.env.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Docker local volumes/uploads scratch if created locally
+local_uploads/

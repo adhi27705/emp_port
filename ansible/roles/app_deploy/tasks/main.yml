@@ -1,0 +1,43 @@
+---
+# Tasks for role: app_deploy
+- name: Ensure application deployment directory exists
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure application subdirectories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ app_dir }}/nginx"
+    - "{{ app_dir }}/app"
+
+- name: Deploy docker-compose.yml to target host
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../docker-compose.yml"
+    dest: "{{ app_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Deploy init.sql schema seed script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../init.sql"
+    dest: "{{ app_dir }}/init.sql"
+    mode: '0644'
+
+- name: Ensure named Docker volume for uploads exists
+  ansible.builtin.command: docker volume create employee_uploads
+  register: volume_result
+  changed_when: "'employee_uploads' in volume_result.stdout"
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Deploy application stack using Docker Compose
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ app_dir }}"
+  register: compose_up_result
+  changed_when: "'Started' in compose_up_result.stdout or 'Running' in compose_up_result.stdout"
+  when: not ansible_check_mode

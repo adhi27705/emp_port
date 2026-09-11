@@ -1,0 +1,28 @@
+---
+# Tasks for role: nginx_config
+- name: Ensure target nginx configuration directory exists
+  ansible.builtin.file:
+    path: "{{ app_dir }}/nginx"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Nginx reverse proxy and static routing configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../nginx/default.conf"
+    dest: "{{ app_dir }}/nginx/default.conf"
+    mode: '0644'
+  register: nginx_conf_deploy
+
+- name: Validate that Nginx default.conf is readable and not empty
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/nginx/default.conf"
+  register: conf_stat
+  failed_when: not conf_stat.stat.exists or conf_stat.stat.size == 0
+  when: not ansible_check_mode
+
+- name: Reload Nginx container to apply new proxy configuration
+  ansible.builtin.command: docker exec employee_nginx nginx -s reload
+  when:
+    - not ansible_check_mode
+    - nginx_conf_deploy.changed
+  failed_when: false
