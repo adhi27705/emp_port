@@ -153,6 +153,9 @@ def serve_uploaded_file(filename):
 
 
 @app.route('/')
+@app.route('/api')
+@app.route('/api/index')
+@app.route('/api/index.py')
 def index():
     """Render the employee portal page."""
     try:
@@ -174,6 +177,8 @@ def index():
 
 
 @app.route('/search', methods=['GET'])
+@app.route('/api/search', methods=['GET'])
+@app.route('/api/index/search', methods=['GET'])
 def search():
     """
     Search employees via case-insensitive SQL query.
@@ -224,6 +229,8 @@ def search():
 
 
 @app.route('/register', methods=['POST'])
+@app.route('/api/register', methods=['POST'])
+@app.route('/api/index/register', methods=['POST'])
 def register():
     """
     Register new employee and upload profile photo.
@@ -288,6 +295,13 @@ def register():
         if "UNIQUE" in str(e).upper() or "DUPLICATE" in str(e).upper():
             return jsonify({"error": "An employee with this email already exists."}), 409
         return jsonify({"error": f"Failed to save employee: {str(e)}"}), 500
+
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    if request.path.startswith(('/search', '/api/search', '/api/index/search')):
+        return search()
+    return index()
 
 
 if __name__ == '__main__':
