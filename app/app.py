@@ -2,7 +2,9 @@ import os
 import time
 import uuid
 import sqlite3
+# pyrefly: ignore [missing-import]
 from flask import Flask, request, jsonify, render_template, send_from_directory
+# pyrefly: ignore [missing-import]
 from werkzeug.utils import secure_filename
 
 # Try importing psycopg2 for PostgreSQL in Docker/Production

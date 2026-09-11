@@ -66,7 +66,7 @@
           <p class="section-subtitle">Real-time searchable personnel directory backed by PostgreSQL, Nginx & Flask</p>
         </div>
         <div class="count-badge">
-          Showing <strong id="employeeCount">{{ employees|length }}</strong> team members
+          Showing <strong id="employeeCount">0</strong> team members
         </div>
       </div>
 
@@ -81,38 +81,11 @@
       </div>
     </div>
 
-    <!-- Employee Cards Grid -->
-    <div id="employeeGrid" class="employee-grid">
-      {% for emp in employees %}
-      <div class="employee-card" data-id="{{ emp.id }}">
-        <div class="avatar-wrapper">
-          <img 
-            src="{{ emp.photo_path }}" 
-            alt="{{ emp.name }}" 
-            class="employee-avatar"
-            onerror="this.src='/static/img/placeholder.svg'"
-          />
-          <div class="status-dot" title="Active team member"></div>
-        </div>
-        <h3 class="employee-name">{{ emp.name }}</h3>
-        <p class="employee-role">{{ emp.role }}</p>
-        <span class="department-badge" data-dept="{{ emp.department }}">{{ emp.department }}</span>
-        
-        <div class="card-footer">
-          <a href="mailto:{{ emp.email }}" class="employee-email" title="Send email to {{ emp.email }}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            <span>{{ emp.email }}</span>
-          </a>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
+    <!-- Employee Cards Grid (Rendered dynamically via app.js) -->
+    <div id="employeeGrid" class="employee-grid"></div>
 
     <!-- Empty State -->
-    <div id="emptyState" class="empty-state" style="{% if employees %}display: none;{% endif %}">
+    <div id="emptyState" class="empty-state" style="display: none;">
       <div class="empty-icon-box">
         <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="11" cy="11" r="8"></circle>
