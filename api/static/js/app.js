@@ -73,9 +73,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dept && dept !== 'All') params.append('dept', dept);
 
       const url = `/search?${params.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Search request failed');
-      const employees = await res.json();
+      let res = await fetch(url);
+      let text = await res.text();
+      let employees;
+
+      try {
+        employees = JSON.parse(text);
+      } catch (parseErr) {
+        // If serverless rewrite returned index HTML, fallback to explicit API route
+        const fallbackRes = await fetch(`/api/search?${params.toString()}`);
+        employees = await fallbackRes.json();
+      }
+
       renderEmployeeCards(employees);
     } catch (err) {
       console.error('Failed to query employees:', err);
@@ -162,12 +171,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData(addEmployeeForm);
 
     try {
-      const res = await fetch('/register', {
+      let res = await fetch('/register', {
         method: 'POST',
         body: formData
       });
+      let text = await res.text();
+      let data;
 
-      const data = await res.json();
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        res = await fetch('/api/register', {
+          method: 'POST',
+          body: formData
+        });
+        data = await res.json();
+      }
 
       if (!res.ok) {
         throw new Error(data.error || 'Failed to register employee');

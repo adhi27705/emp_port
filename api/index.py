@@ -149,6 +149,23 @@ def health():
     return jsonify({"status": "healthy", "service": "employee-directory-portal"}), 200
 
 
+class VercelMiddleware:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        matched = (environ.get('HTTP_X_MATCHED_PATH') or 
+                   environ.get('HTTP_X_FORWARDED_URI') or 
+                   environ.get('HTTP_X_VERCEL_PATH') or '')
+        if matched:
+            clean = matched.split('?')[0]
+            if clean and clean != '/api/index.py' and clean != '/api/index':
+                environ['PATH_INFO'] = clean
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = VercelMiddleware(app.wsgi_app)
+
+
 @app.route('/static/uploads/<path:filename>')
 @app.route('/uploads/<path:filename>')
 def serve_uploaded_file(filename):
@@ -158,7 +175,6 @@ def serve_uploaded_file(filename):
 @app.route('/')
 @app.route('/api')
 @app.route('/api/index')
-@app.route('/api/index.py')
 def index():
     init_db()
     try:
@@ -176,6 +192,31 @@ def index():
                 with open(p, 'r', encoding='utf-8') as f:
                     return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
         raise
+
+
+@app.route('/api/index.py', methods=['GET', 'POST'])
+def vercel_entrypoint():
+    init_db()
+    matched = (request.headers.get('x-matched-path') or 
+               request.headers.get('x-now-route-matches') or
+               request.environ.get('HTTP_X_MATCHED_PATH') or
+               request.environ.get('HTTP_X_FORWARDED_URI') or '')
+    clean_path = matched.split('?')[0].lower() if matched else ''
+    
+    if clean_path.startswith('/search') or clean_path.startswith('/api/search'):
+        return search()
+    if clean_path.startswith('/register') or clean_path.startswith('/api/register'):
+        return register()
+    if clean_path.startswith('/health') or clean_path.startswith('/api/health'):
+        return health()
+    
+    # Check parameters or methods if headers are not present
+    if request.method == 'POST' or request.files:
+        return register()
+    if 'q' in request.args or 'dept' in request.args:
+        return search()
+    
+    return index()
 
 
 @app.route('/search', methods=['GET'])
@@ -288,9 +329,19 @@ def register():
 
 @app.errorhandler(404)
 def handle_not_found(e):
-    # Graceful fallback for single-page routing or rewritten paths
-    if request.path.startswith(('/search', '/api/search', '/api/index/search')):
+    matched = (request.headers.get('x-matched-path') or 
+               request.headers.get('x-now-route-matches') or
+               request.environ.get('HTTP_X_MATCHED_PATH') or
+               request.environ.get('HTTP_X_FORWARDED_URI') or '').lower()
+    path = request.path.lower()
+
+    if (matched.startswith('/search') or path.startswith(('/search', '/api/search', '/api/index/search')) or 
+            'q' in request.args or 'dept' in request.args):
         return search()
+    if matched.startswith('/register') or path.startswith(('/register', '/api/register', '/api/index/register')) or request.method == 'POST':
+        return register()
+    if matched.startswith('/health') or path.startswith(('/health', '/api/health', '/api/index/health')):
+        return health()
     return index()
 
 
