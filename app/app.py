@@ -21,8 +21,14 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Upload Configuration
-# In Docker, UPLOAD_FOLDER is set to /uploads. Locally, fallback to app/static/uploads.
-DEFAULT_LOCAL_UPLOADS = os.path.join(BASE_DIR, 'static', 'uploads')
+IS_VERCEL = bool(os.getenv('VERCEL'))
+if IS_VERCEL:
+    DEFAULT_LOCAL_UPLOADS = '/tmp/uploads'
+    SQLITE_DB_PATH = '/tmp/employees.db'
+else:
+    DEFAULT_LOCAL_UPLOADS = os.path.join(BASE_DIR, 'static', 'uploads')
+    SQLITE_DB_PATH = os.path.join(BASE_DIR, 'employees.db')
+
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', DEFAULT_LOCAL_UPLOADS)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -30,7 +36,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 DATABASE_URL = os.getenv('DATABASE_URL')
 # Determine if PostgreSQL should be used
 USE_POSTGRES = bool(PSYCOPG2_AVAILABLE and DATABASE_URL and DATABASE_URL.startswith('postgres'))
-SQLITE_DB_PATH = os.path.join(BASE_DIR, 'employees.db')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB upload limit
