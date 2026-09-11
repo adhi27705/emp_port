@@ -9,6 +9,26 @@
       "destination": "/api/register"
     },
     {
+      "source": "/delete",
+      "destination": "/api/delete"
+    },
+    {
+      "source": "/delete/(.*)",
+      "destination": "/api/delete/$1"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "/api/auth/$1"
+    },
+    {
+      "source": "/login",
+      "destination": "/api/auth/login"
+    },
+    {
+      "source": "/logout",
+      "destination": "/api/auth/logout"
+    },
+    {
       "source": "/health",
       "destination": "/api/health"
     }

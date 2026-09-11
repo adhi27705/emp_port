@@ -297,6 +297,132 @@ def register():
         return jsonify({"error": f"Failed to save employee: {str(e)}"}), 500
 
 
+# Authentication Configuration
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+
+
+@app.route('/api/auth/login', methods=['POST'])
+@app.route('/auth/login', methods=['POST'])
+@app.route('/login', methods=['POST'])
+def login():
+    """Authenticate administrator credentials."""
+    data = request.get_json(silent=True) or request.form or {}
+    username = (data.get('username') or '').strip()
+    password = (data.get('password') or '').strip()
+
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        token = f"admin-token-{uuid.uuid4().hex}"
+        return jsonify({
+            "success": True,
+            "message": "Login successful",
+            "token": token,
+            "user": {
+                "username": username,
+                "role": "Administrator",
+                "badge": "Admin"
+            }
+        }), 200
+    else:
+        return jsonify({
+            "success": False,
+            "error": "Invalid username or password."
+        }), 401
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+@app.route('/auth/logout', methods=['POST'])
+@app.route('/logout', methods=['POST'])
+def logout():
+    """Log out administrator session."""
+    return jsonify({
+        "success": True,
+        "message": "Logged out successfully"
+    }), 200
+
+
+@app.route('/api/auth/status', methods=['GET'])
+@app.route('/auth/status', methods=['GET'])
+def auth_status():
+    """Verify administrator session status."""
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header[7:].strip() if auth_header.startswith('Bearer ') else (request.args.get('token') or '')
+    if token and token.startswith('admin-token-'):
+        return jsonify({
+            "authenticated": True,
+            "user": {
+                "username": ADMIN_USERNAME,
+                "role": "Administrator",
+                "badge": "Admin"
+            }
+        }), 200
+    return jsonify({"authenticated": False}), 200
+
+
+@app.route('/api/delete', methods=['POST', 'DELETE'])
+@app.route('/delete', methods=['POST', 'DELETE'])
+@app.route('/api/delete/<int:emp_id>', methods=['POST', 'DELETE'])
+@app.route('/delete/<int:emp_id>', methods=['POST', 'DELETE'])
+def delete_employee(emp_id=None):
+    """Delete an employee record and associated upload file."""
+    if not emp_id:
+        data = request.get_json(silent=True) or request.form or {}
+        emp_id = data.get('id') or request.args.get('id')
+
+    if not emp_id:
+        return jsonify({"error": "Employee ID is required."}), 400
+
+    try:
+        emp_id = int(emp_id)
+    except ValueError:
+        return jsonify({"error": "Invalid employee ID."}), 400
+
+    try:
+        conn, is_pg = get_db_connection()
+        photo_path = None
+
+        if is_pg:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT photo_path FROM employees WHERE id = %s", (emp_id,))
+                row = cur.fetchone()
+                if not row:
+                    conn.close()
+                    return jsonify({"error": "Employee not found."}), 404
+                photo_path = row['photo_path']
+                cur.execute("DELETE FROM employees WHERE id = %s", (emp_id,))
+                conn.commit()
+            conn.close()
+        else:
+            cur = conn.execute("SELECT photo_path FROM employees WHERE id = ?", (emp_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return jsonify({"error": "Employee not found."}), 404
+            photo_path = row['photo_path']
+            with conn:
+                conn.execute("DELETE FROM employees WHERE id = ?", (emp_id,))
+            conn.close()
+
+        # Delete local uploaded photo file if present
+        if photo_path and photo_path.startswith('/static/uploads/'):
+            filename = photo_path.replace('/static/uploads/', '')
+            file_disk_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            if os.path.exists(file_disk_path):
+                try:
+                    os.remove(file_disk_path)
+                except Exception as file_err:
+                    print(f"File cleanup warning: {file_err}")
+
+        return jsonify({
+            "success": True,
+            "message": "Employee deleted successfully.",
+            "id": emp_id
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete employee: {str(e)}"}), 500
+
+
 @app.errorhandler(404)
 def handle_not_found(e):
     if request.path.startswith(('/search', '/api/search', '/api/index/search')):

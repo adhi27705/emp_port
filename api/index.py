@@ -171,9 +171,20 @@ def vercel_request_dispatcher():
 
     if (endpoint == 'register' or 
         raw_path.endswith('/register') or 
-        'register' in matched or 
-        (request.method == 'POST' and not raw_path.startswith('/static'))):
+        'register' in matched):
         return register()
+
+    if (endpoint == 'delete' or 
+        raw_path.endswith('/delete') or 
+        'delete' in matched):
+        return delete_employee()
+
+    if (endpoint.startswith('auth') or 
+        '/auth' in raw_path or 
+        '/auth' in matched or 
+        raw_path.endswith('/login') or 
+        raw_path.endswith('/logout')):
+        return auth_endpoint()
 
     if (endpoint == 'health' or 
         raw_path.endswith('/health') or 
@@ -335,6 +346,82 @@ def register():
         if "UNIQUE" in str(e).upper():
             return jsonify({"error": "An employee with this email already exists."}), 409
         return jsonify({"error": f"Failed to save employee: {str(e)}"}), 500
+
+
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+
+
+@app.route('/delete', methods=['POST', 'DELETE'])
+@app.route('/api/delete', methods=['POST', 'DELETE'])
+def delete_employee():
+    init_db()
+    data = request.get_json(silent=True) or request.form or {}
+    emp_id = data.get('id') or request.args.get('id')
+    if not emp_id:
+        return jsonify({"error": "Employee ID is required."}), 400
+
+    try:
+        emp_id = int(emp_id)
+        conn, is_pg = get_db_connection()
+        if is_pg:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT photo_path FROM employees WHERE id = %s", (emp_id,))
+                row = cur.fetchone()
+                if not row:
+                    conn.close()
+                    return jsonify({"error": "Employee not found."}), 404
+                cur.execute("DELETE FROM employees WHERE id = %s", (emp_id,))
+                conn.commit()
+            conn.close()
+        else:
+            cur = conn.execute("SELECT photo_path FROM employees WHERE id = ?", (emp_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return jsonify({"error": "Employee not found."}), 404
+            photo_path = row['photo_path']
+            with conn:
+                conn.execute("DELETE FROM employees WHERE id = ?", (emp_id,))
+            conn.close()
+
+        return jsonify({"success": True, "message": "Employee deleted successfully.", "id": emp_id}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete employee: {str(e)}"}), 500
+
+
+@app.route('/auth/login', methods=['POST'])
+@app.route('/api/auth/login', methods=['POST'])
+@app.route('/login', methods=['POST'])
+@app.route('/auth/logout', methods=['POST'])
+@app.route('/api/auth/logout', methods=['POST'])
+@app.route('/logout', methods=['POST'])
+@app.route('/auth/status', methods=['GET'])
+@app.route('/api/auth/status', methods=['GET'])
+def auth_endpoint():
+    path = request.path.lower()
+    if 'logout' in path:
+        return jsonify({"success": True, "message": "Logged out successfully"}), 200
+    if 'status' in path:
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header[7:].strip() if auth_header.startswith('Bearer ') else (request.args.get('token') or '')
+        if token and token.startswith('admin-token-'):
+            return jsonify({"authenticated": True, "user": {"username": ADMIN_USERNAME, "role": "Administrator"}}), 200
+        return jsonify({"authenticated": False}), 200
+
+    data = request.get_json(silent=True) or request.form or {}
+    username = (data.get('username') or '').strip()
+    password = (data.get('password') or '').strip()
+
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        token = f"admin-token-{uuid.uuid4().hex}"
+        return jsonify({
+            "success": True,
+            "message": "Login successful",
+            "token": token,
+            "user": {"username": username, "role": "Administrator"}
+        }), 200
+    return jsonify({"success": False, "error": "Invalid username or password."}), 401
 
 
 @app.errorhandler(404)
