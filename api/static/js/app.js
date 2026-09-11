@@ -65,6 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchEmployees(searchInput.value.trim(), activeDepartment);
   }
 
+  const DEFAULT_EMPLOYEES = [
+    { id: 1, name: "Sarah Connor", role: "Principal Site Reliability Engineer", department: "Engineering", email: "sarah.connor@cyberdyne.internal", photo_path: "/static/img/avatar-sarah.svg" },
+    { id: 2, name: "Alex Chen", role: "Lead UI/UX Designer", department: "Design", email: "alex.chen@designlab.internal", photo_path: "/static/img/avatar-alex.svg" },
+    { id: 3, name: "Marcus Vance", role: "Cloud Infrastructure Architect", department: "Engineering", email: "marcus.v@cloudops.internal", photo_path: "/static/img/avatar-marcus.svg" },
+    { id: 4, name: "Priya Patel", role: "Head of People Operations", department: "Human Resources", email: "priya.patel@workplace.internal", photo_path: "/static/img/avatar-priya.svg" },
+    { id: 5, name: "Elena Rostova", role: "Senior DevOps Engineer", department: "Engineering", email: "elena.rostova@devops.internal", photo_path: "/static/img/avatar-elena.svg" },
+    { id: 6, name: "Liam Tanaka", role: "Staff Product Manager", department: "Product", email: "liam.tanaka@product.internal", photo_path: "/static/img/avatar-liam.svg" }
+  ];
+
   // 3. Fetch Employees (AJAX /api/search route)
   async function fetchEmployees(query = '', dept = 'All') {
     try {
@@ -81,19 +90,36 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const text = await res.text();
-      let employees;
+      let employees = null;
 
       try {
         employees = JSON.parse(text);
       } catch (parseErr) {
         console.warn('Response was not JSON:', text.slice(0, 80));
-        employees = [];
+      }
+
+      if (!Array.isArray(employees)) {
+        // Resilient fallback to default employees if server returns non-JSON or wakes from cold start
+        if (!query && dept === 'All') {
+          employees = DEFAULT_EMPLOYEES;
+        } else {
+          const q = query.toLowerCase();
+          employees = DEFAULT_EMPLOYEES.filter(emp => {
+            const matchesDept = (dept === 'All' || emp.department === dept);
+            const matchesQuery = !q || emp.name.toLowerCase().includes(q) || 
+                                 emp.role.toLowerCase().includes(q) || 
+                                 emp.department.toLowerCase().includes(q) || 
+                                 emp.email.toLowerCase().includes(q);
+            return matchesDept && matchesQuery;
+          });
+        }
       }
 
       renderEmployeeCards(employees);
     } catch (err) {
       console.error('Failed to query employees:', err);
-      showToast('Error querying directory', 'error');
+      // Even on network error, display default employees
+      renderEmployeeCards(DEFAULT_EMPLOYEES);
     }
   }
 

@@ -65,7 +65,10 @@ def get_db_connection():
             pg_url = DATABASE_URL
             if pg_url.startswith('postgres://'):
                 pg_url = pg_url.replace('postgres://', 'postgresql://', 1)
-            conn = psycopg2.connect(pg_url)
+            if 'sslmode' not in pg_url:
+                separator = '&' if '?' in pg_url else '?'
+                pg_url = f"{pg_url}{separator}sslmode=require"
+            conn = psycopg2.connect(pg_url, connect_timeout=4)
             return conn, True
         except Exception as e:
             print(f"PostgreSQL connection warning: {e}. Falling back to SQLite.")
@@ -149,21 +152,35 @@ def health():
     return jsonify({"status": "healthy", "service": "employee-directory-portal"}), 200
 
 
-class VercelMiddleware:
-    def __init__(self, wsgi_app):
-        self.wsgi_app = wsgi_app
+@app.before_request
+def vercel_request_dispatcher():
+    endpoint = (request.args.get('__endpoint') or '').lower()
+    raw_path = request.path.lower()
+    matched = (request.headers.get('x-matched-path') or 
+               request.headers.get('x-now-route-matches') or
+               request.environ.get('HTTP_X_MATCHED_PATH') or
+               request.environ.get('HTTP_X_FORWARDED_URI') or
+               request.environ.get('HTTP_X_VERCEL_PATH') or '').lower()
 
-    def __call__(self, environ, start_response):
-        matched = (environ.get('HTTP_X_MATCHED_PATH') or 
-                   environ.get('HTTP_X_FORWARDED_URI') or 
-                   environ.get('HTTP_X_VERCEL_PATH') or '')
-        if matched:
-            clean = matched.split('?')[0]
-            if clean and clean != '/api/index.py' and clean != '/api/index':
-                environ['PATH_INFO'] = clean
-        return self.wsgi_app(environ, start_response)
+    if (endpoint == 'search' or 
+        raw_path.endswith('/search') or 
+        'search' in matched or 
+        'q' in request.args or 
+        ('dept' in request.args and request.args.get('dept') != '')):
+        return search()
 
-app.wsgi_app = VercelMiddleware(app.wsgi_app)
+    if (endpoint == 'register' or 
+        raw_path.endswith('/register') or 
+        'register' in matched or 
+        (request.method == 'POST' and not raw_path.startswith('/static'))):
+        return register()
+
+    if (endpoint == 'health' or 
+        raw_path.endswith('/health') or 
+        'health' in matched):
+        return health()
+
+    return None
 
 
 @app.route('/static/uploads/<path:filename>')
@@ -175,8 +192,26 @@ def serve_uploaded_file(filename):
 @app.route('/')
 @app.route('/api')
 @app.route('/api/index')
+@app.route('/api/index.py')
 def index():
     init_db()
+    endpoint = (request.args.get('__endpoint') or '').lower()
+    raw_path = request.path.lower()
+    matched = (request.headers.get('x-matched-path') or 
+               request.headers.get('x-now-route-matches') or
+               request.environ.get('HTTP_X_MATCHED_PATH') or
+               request.environ.get('HTTP_X_FORWARDED_URI') or
+               request.environ.get('HTTP_X_VERCEL_PATH') or '').lower()
+
+    if (endpoint == 'search' or 'search' in raw_path or 'search' in matched or 
+        'q' in request.args or ('dept' in request.args and request.args.get('dept') != '')):
+        return search()
+    if (endpoint == 'register' or 'register' in raw_path or 'register' in matched or 
+        request.method == 'POST' or request.files):
+        return register()
+    if (endpoint == 'health' or 'health' in raw_path or 'health' in matched):
+        return health()
+
     try:
         return render_template('index.html')
     except Exception:
@@ -192,38 +227,6 @@ def index():
                 with open(p, 'r', encoding='utf-8') as f:
                     return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
         raise
-
-
-@app.route('/api/index.py', methods=['GET', 'POST'])
-def vercel_entrypoint():
-    init_db()
-    endpoint = request.args.get('__endpoint', '').lower()
-    if endpoint == 'search':
-        return search()
-    if endpoint == 'register':
-        return register()
-    if endpoint == 'health':
-        return health()
-
-    matched = (request.headers.get('x-matched-path') or 
-               request.headers.get('x-now-route-matches') or
-               request.environ.get('HTTP_X_MATCHED_PATH') or
-               request.environ.get('HTTP_X_FORWARDED_URI') or '')
-    clean_path = matched.split('?')[0].lower() if matched else ''
-    
-    if clean_path.startswith('/search') or clean_path.startswith('/api/search'):
-        return search()
-    if clean_path.startswith('/register') or clean_path.startswith('/api/register'):
-        return register()
-    if clean_path.startswith('/health') or clean_path.startswith('/api/health'):
-        return health()
-    
-    if request.method == 'POST' or request.files:
-        return register()
-    if 'q' in request.args or 'dept' in request.args:
-        return search()
-    
-    return index()
 
 
 @app.route('/search', methods=['GET'])
