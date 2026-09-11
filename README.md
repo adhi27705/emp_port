@@ -4,7 +4,12 @@ A searchable directory of employees with profile photo uploads, PostgreSQL datab
 
 ---
 
-## Architecture Overview
+## Live Demo & Deployment
+
+- **Vercel Live URL:** [https://employeedirectoryportal-six.vercel.app](https://employeedirectoryportal-six.vercel.app)
+- **Local Dev URL:** [http://localhost:5000](http://localhost:5000)
+
+---
 
 ```
 [ Browser / Client ]
